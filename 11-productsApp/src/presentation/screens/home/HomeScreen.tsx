@@ -1,8 +1,11 @@
-import { Button, Icon, Layout, Text } from '@ui-kitten/components';
-import { globalStyles } from '../../../config/theme/global-theme';
-import { RootStackParams } from '../../navigation/StackNavigator';
 import { StackScreenProps } from '@react-navigation/stack';
-import { useAuthStore } from '../../store/auth/useAuthStore';
+import { useInfiniteQuery, useQueryClient } from '@tanstack/react-query';
+import { getProductsByPage } from '../../../actions/products/get-products-by-page';
+import { ProductList } from '../../components/products/ProductList';
+import { FAB } from '../../components/ui/FAB';
+import { FullScreenLoader } from '../../components/ui/FullScreenLoader';
+import { MainLayout } from '../../layouts/MainLayout';
+import { RootStackParams } from '../../navigation/StackNavigator';
 
 
 interface Props extends StackScreenProps<RootStackParams, 'HomeScreen'> { }
@@ -10,22 +13,49 @@ interface Props extends StackScreenProps<RootStackParams, 'HomeScreen'> { }
 
 export const HomeScreen = ( { navigation }: Props ) => {
 
-  const { logout } = useAuthStore();
+  const queryClient = useQueryClient();
 
-  const handleLogout = async () => {
-    await logout();
-  };
+  const { isLoading, data, fetchNextPage } = useInfiniteQuery( {
+    queryKey: [ 'products', 'infinite' ],
+    staleTime: 1000 * 60 * 60, // 1 hour
+    initialPageParam: 0,
+
+    queryFn: async ( params ) => {
+      const products = await getProductsByPage( params.pageParam );
+
+      // Preload product data into the query cache
+      products.forEach( product => {
+        queryClient.setQueryData( [ 'product', product.id ], product );
+      } );
+      return products;
+    },
+    getNextPageParam: ( lastPage, allPages ) => allPages.length,
+  } );
+
 
   return (
-    <Layout style={ globalStyles.container }>
-      <Text>HomeScreen</Text>
-
-      <Button
-        accessoryLeft={ <Icon name='log-out-outline' /> }
-        onPress={ handleLogout }
+    <>
+      <MainLayout
+        title='TesloShop - Products'
+        subTitle='Browse the latest products'
+      // rightAction={ () => { } }
+      // rightActionIcon='plus-outline'
       >
-        Log out
-      </Button>
-    </Layout>
+        {
+          isLoading
+            ? <FullScreenLoader />
+            : <ProductList
+              products={ data?.pages.flat() ?? [] }
+              fetchNextPage={ fetchNextPage }
+            />
+        }
+      </MainLayout>
+
+      <FAB
+        iconName="plus-outline"
+        style={ { position: 'absolute', bottom: 20, right: 20 } }
+        onPress={ () => navigation.navigate( 'ProductScreen', { productId: 'new' } ) }
+      />
+    </>
   );
 };
