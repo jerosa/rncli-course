@@ -7,6 +7,7 @@ import { FadeInImage } from '../../components/ui/FadeInImage';
 import { MainLayout } from '../../layouts/MainLayout';
 import { Gender, Product } from '../../../domain/entities/product';
 import { Size } from '../../../infra/interfaces/teslo-products.responses';
+import { CameraAdapter } from '../../../config/adapters/camera.adapter';
 
 interface ProductFormProps {
   product: Product;
@@ -25,6 +26,12 @@ export const ProductForm = ( { product, mutation, sizes, genders, theme }: Produ
       <MainLayout
         title={ values.title }
         subTitle={ `Price: ${ values.price }` }
+        rightAction={ async () => {
+          // const photos = await CameraAdapter.takePicture();
+          const photos = await CameraAdapter.getPictureFromLibrary();
+          setFieldValue( 'images', [ ...values.images, ...photos ] );
+        } }
+        rightActionIcon='image-outline'
       >
         <ScrollView style={ styles.scrollView }>
 

@@ -1,4 +1,4 @@
-import axios from "axios";
+import axios, { type AxiosError } from "axios";
 import { tesloApi } from "../../config/api/tesloApi";
 import { User } from "../../domain/entities/user";
 import type { AuthResponse } from "../../infra/interfaces/auth.responses";
@@ -24,7 +24,11 @@ export const authLogin = async ( email: string, password: string ): Promise<{ us
     const { data } = await tesloApi.post<AuthResponse>( '/auth/login', { email, password } );
     return returnUser( data );
   } catch ( error ) {
-    console.error( 'Error logging in:', error );
+    if ( axios.isAxiosError( error ) ) {
+      console.error( 'Error checking auth status:', error.response );
+    } else {
+      console.error( 'Error logging in:', error );
+    }
     return null;
   }
 };
@@ -33,11 +37,11 @@ export const authCheckStatus = async (): Promise<{ user: User; token: string; } 
   try {
     const { data } = await tesloApi.get<AuthResponse>( '/auth/check-status' );
     return returnUser( data );
-  } catch ( error ) {
+  } catch ( error: AxiosError | any ) {
     if ( axios.isAxiosError( error ) ) {
       // don't report 401
       if ( error.response?.status !== 401 ) {
-        console.error( 'Error checking auth status:', error.response?.data );
+        console.error( 'Error checking auth status:', error.response?.data || error.message );
       }
     } else {
       console.error( 'Error checking auth status:', error );

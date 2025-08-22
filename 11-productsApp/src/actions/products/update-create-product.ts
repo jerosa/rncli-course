@@ -1,12 +1,37 @@
-import { AxiosError, isAxiosError } from "axios";
+import { type AxiosError, isAxiosError } from "axios";
 import { tesloApi } from "../../config/api/tesloApi";
 import { Product } from "../../domain/entities/product";
 
 
-const sanitiseImages = ( images: string[] ) => {
+const sanitiseImages = async ( images: string[] ) => {
   // TODO: check FILES
+  const fileImages = images.filter( image => image.startsWith( 'file://' ) );
+  const httpImages = images.filter( image => !image.startsWith( 'file://' ) );
 
-  return images.map( image => image.trim() && image.split( '/' ).pop() ) || '';
+  if ( fileImages.length > 0 ) {
+    const uploadPromises = images.map( image => uploadImages( image ) );
+    const uploadedImages = await Promise.all( uploadPromises );
+    httpImages.push( ...uploadedImages );
+  }
+
+  return httpImages.map( image => image.split( '/' ).pop() ) || '';
+};
+
+const uploadImages = async ( image: string ): Promise<string> => {
+  const formData = new FormData();
+  formData.append( 'file', {
+    uri: image,
+    type: 'image/jpeg',
+    name: image.split( '/' ).pop()
+  } );
+
+  const { data } = await tesloApi.post<{ image: string; }>( '/files/product', formData, {
+    headers: {
+      'Content-Type': 'multipart/form-data'
+    }
+  } );
+
+  return data.image;
 };
 
 
@@ -30,7 +55,7 @@ const updateProduct = async ( product: Partial<Product> ) => {
   const { id, images = [], ...rest } = product;
 
   try {
-    const cleanedImages = sanitiseImages( images );
+    const cleanedImages = await sanitiseImages( images );
 
     const { data } = await tesloApi.patch<Product>( `/products/${ id }`, {
       images: cleanedImages,
@@ -54,7 +79,7 @@ const createProduct = async ( product: Partial<Product> ) => {
   const { id, images = [], ...rest } = product;
 
   try {
-    const cleanedImages = sanitiseImages( images );
+    const cleanedImages = await sanitiseImages( images );
 
     const { data } = await tesloApi.post<Product>( `/products`, {
       images: cleanedImages,

@@ -1,7 +1,5 @@
-import { Divider, Layout, TopNavigation, TopNavigationAction } from '@ui-kitten/components';
+import { Divider, Layout, Text, TopNavigation, TopNavigationAction } from '@ui-kitten/components';
 import { PropsWithChildren } from 'react';
-import { Text, View } from 'react-native';
-import { globalStyles } from '../../config/theme/global-theme';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { CustomIcon } from '../components/ui/CustomIcon';
@@ -14,6 +12,12 @@ interface Props extends PropsWithChildren {
   rightAction?: () => void;
   rightActionIcon?: string;
 }
+
+// Remove title cropping when too large
+const TitleComponent = ( props: any, title: string ) => (
+  <Text { ...props } style={ [ props.style, { maxWidth: '70%' } ] }>{ title }</Text>
+);
+
 
 export const MainLayout = ( {
   title,
@@ -46,10 +50,11 @@ export const MainLayout = ( {
   };
 
 
+
   return (
     <Layout style={ { paddingTop: top } }>
       <TopNavigation
-        title={ title }
+        title={ ( props: any ) => TitleComponent( props, title ) }
         subtitle={ subTitle }
         alignment='center'
         accessoryLeft={ canGoBack() ? renderBackAction : undefined }
